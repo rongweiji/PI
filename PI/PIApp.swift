@@ -12,7 +12,8 @@ import SwiftData
 struct PIApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            PhotoItem.self,
+            VideoItem.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

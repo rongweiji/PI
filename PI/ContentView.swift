@@ -9,53 +9,70 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 32) {
+                Text("Select a capture mode")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .padding(.top, 40)
+
+                NavigationLink {
+                    PhotoCaptureView()
+                } label: {
+                    ModeButton(icon: "camera.fill", title: "Photo Capture", subtitle: "Capture still images with IMU snapshots")
+                }
+
+                NavigationLink {
+                    VideoCaptureView()
+                } label: {
+                    ModeButton(icon: "video.fill", title: "Video Capture", subtitle: "Record video and continuous IMU data")
+                }
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("PI Capture")
+        }
+    }
+}
+
+private struct ModeButton: View {
+    let icon: String
+    let title: String
+    let subtitle: String
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
-        }
-    }
+        HStack(alignment: .center, spacing: 16) {
+            Image(systemName: icon)
+                .font(.largeTitle)
+                .foregroundColor(.white)
+                .padding(18)
+                .background(Color.blue)
+                .clipShape(Circle())
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.headline)
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.leading)
             }
+
+            Spacer()
+            Image(systemName: "chevron.right")
+                .foregroundColor(.secondary)
         }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemBackground))
+        )
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }
