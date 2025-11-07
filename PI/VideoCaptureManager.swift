@@ -32,6 +32,7 @@ final class VideoCaptureManager: NSObject, ObservableObject {
     private var pendingSamples: [IMUSample] = []
     private var recordingStartDate: Date?
     private var currentVideoOrientation: AVCaptureVideoOrientation = .portrait
+    private var currentIMUInterval: TimeInterval = 1.0 / 30.0
 
     override init() {
         super.init()
@@ -168,6 +169,12 @@ final class VideoCaptureManager: NSObject, ObservableObject {
                 }
             }
         }
+    }
+
+    func updateIMUSamplingInterval(_ interval: TimeInterval) {
+        guard !isRecording, interval != currentIMUInterval else { return }
+        currentIMUInterval = interval
+        imuRecorder.setUpdateInterval(interval)
     }
 }
 

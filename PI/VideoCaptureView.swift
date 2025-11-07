@@ -10,18 +10,36 @@ import SwiftData
 import AVKit
 import Combine
 
+private enum VideoIMUSamplingRate: Double, CaseIterable, Identifiable {
+    case thirty = 30
+    case hundred = 100
+    case twoHundred = 200
+
+    var id: Double { rawValue }
+
+    var displayName: String {
+        "\(Int(rawValue)) Hz"
+    }
+
+    var interval: TimeInterval {
+        1.0 / rawValue
+    }
+}
+
 struct VideoCaptureView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var videoManager = VideoCaptureManager()
     @StateObject private var imuManager = IMUManager()
     @State private var statusMessage: String?
     @State private var statusIsError = false
+    @State private var selectedSamplingRate: VideoIMUSamplingRate = .thirty
 
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
                 cameraPreview
                 imuSection
+                samplingRateSelector
                 recordingControls
                 statusLabel
                 savedItemsLink
@@ -31,10 +49,14 @@ struct VideoCaptureView: View {
         .navigationTitle("Video & IMU")
         .onAppear {
             imuManager.startUpdates()
+            applySelectedSamplingRate()
         }
         .onDisappear {
             imuManager.stopUpdates()
             videoManager.stopSession()
+        }
+        .onChange(of: selectedSamplingRate) { _ in
+            applySelectedSamplingRate()
         }
         .onReceive(videoManager.$latestRecording.compactMap { $0 }) { result in
             saveRecording(result)
@@ -102,6 +124,27 @@ struct VideoCaptureView: View {
                 Text("X: \(imuManager.imuData.gyroscopeX, specifier: "%.6f") rad/s")
                 Text("Y: \(imuManager.imuData.gyroscopeY, specifier: "%.6f") rad/s")
                 Text("Z: \(imuManager.imuData.gyroscopeZ, specifier: "%.6f") rad/s")
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    private var samplingRateSelector: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("IMU Sampling Rate")
+                .font(.headline)
+            Picker("Sampling Rate", selection: $selectedSamplingRate) {
+                ForEach(VideoIMUSamplingRate.allCases) { rate in
+                    Text(rate.displayName).tag(rate)
+                }
+            }
+            .pickerStyle(.segmented)
+            .disabled(videoManager.isRecording)
+
+            if videoManager.isRecording {
+                Text("Stop recording to change sampling rate.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal)
@@ -214,6 +257,10 @@ struct VideoCaptureView: View {
         } catch {
             showStatus(message: "Failed to save video: \(error.localizedDescription)", isError: true)
         }
+    }
+
+    private func applySelectedSamplingRate() {
+        videoManager.updateIMUSamplingInterval(selectedSamplingRate.interval)
     }
 }
 
