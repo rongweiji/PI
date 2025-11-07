@@ -13,6 +13,7 @@ final class IMUStreamRecorder {
     private let queue = OperationQueue()
     private(set) var samples: [IMUSample] = []
     private(set) var isRecording = false
+    private var bootTimeReference: Date?
     private var updateInterval: TimeInterval {
         didSet {
             motionManager.deviceMotionUpdateInterval = updateInterval
@@ -30,11 +31,18 @@ final class IMUStreamRecorder {
         guard motionManager.isDeviceMotionAvailable, !isRecording else { return }
         samples = []
         isRecording = true
+        bootTimeReference = Date(timeIntervalSinceNow: -ProcessInfo.processInfo.systemUptime)
 
         motionManager.startDeviceMotionUpdates(using: .xArbitraryCorrectedZVertical, to: queue) { [weak self] motion, error in
             guard let self, let motion, error == nil else { return }
+            let timestampDate: Date
+            if let bootTimeReference {
+                timestampDate = bootTimeReference.addingTimeInterval(motion.timestamp)
+            } else {
+                timestampDate = Date()
+            }
             let sample = IMUSample(
-                timestamp: Date(),
+                timestamp: timestampDate,
                 accelerationX: motion.userAcceleration.x,
                 accelerationY: motion.userAcceleration.y,
                 accelerationZ: motion.userAcceleration.z,
@@ -50,6 +58,7 @@ final class IMUStreamRecorder {
         guard isRecording else { return samples }
         motionManager.stopDeviceMotionUpdates()
         isRecording = false
+        bootTimeReference = nil
         return samples
     }
 
