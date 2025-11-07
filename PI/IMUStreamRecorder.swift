@@ -13,8 +13,14 @@ final class IMUStreamRecorder {
     private let queue = OperationQueue()
     private(set) var samples: [IMUSample] = []
     private(set) var isRecording = false
+    private var updateInterval: TimeInterval {
+        didSet {
+            motionManager.deviceMotionUpdateInterval = updateInterval
+        }
+    }
 
-    init(updateInterval: TimeInterval = 0.05) {
+    init(updateInterval: TimeInterval = 1.0 / 30.0) {
+        self.updateInterval = updateInterval
         motionManager.deviceMotionUpdateInterval = updateInterval
         queue.name = "IMUStreamRecorderQueue"
         queue.maxConcurrentOperationCount = 1
@@ -45,5 +51,10 @@ final class IMUStreamRecorder {
         motionManager.stopDeviceMotionUpdates()
         isRecording = false
         return samples
+    }
+
+    func setUpdateInterval(_ interval: TimeInterval) {
+        guard !isRecording else { return }
+        updateInterval = interval
     }
 }

@@ -14,6 +14,7 @@ struct PIApp: App {
         let schema = Schema([
             PhotoItem.self,
             VideoItem.self,
+            IMUSessionItem.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

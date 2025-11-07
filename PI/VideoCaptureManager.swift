@@ -31,10 +31,17 @@ final class VideoCaptureManager: NSObject, ObservableObject {
     private let imuRecorder = IMUStreamRecorder()
     private var pendingSamples: [IMUSample] = []
     private var recordingStartDate: Date?
+    private var currentVideoOrientation: AVCaptureVideoOrientation = .portrait
 
     override init() {
         super.init()
+        configureOrientationMonitoring()
         checkAuthorization()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+        UIDevice.current.endGeneratingDeviceOrientationNotifications()
     }
 
     func checkAuthorization() {
@@ -90,6 +97,7 @@ final class VideoCaptureManager: NSObject, ObservableObject {
                 if session.canAddOutput(movieOutput) {
                     session.addOutput(movieOutput)
                     movieOutput.movieFragmentInterval = .invalid
+                    setVideoOrientation(currentVideoOrientation)
                 } else {
                     DispatchQueue.main.async {
                         self.cameraError = "Unable to record videos on this device."
@@ -127,6 +135,7 @@ final class VideoCaptureManager: NSObject, ObservableObject {
                 try? FileManager.default.removeItem(at: tempURL)
             }
 
+            self.setVideoOrientation(self.currentVideoOrientation)
             movieOutput.startRecording(to: tempURL, recordingDelegate: self)
 
             recordingStartDate = Date()
@@ -204,6 +213,40 @@ extension VideoCaptureManager: AVCaptureFileOutputRecordingDelegate {
             return UIImage(cgImage: cgImage)
         } catch {
             return nil
+        }
+    }
+}
+
+// MARK: - Orientation Handling
+
+private extension VideoCaptureManager {
+    func configureOrientationMonitoring() {
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(deviceOrientationDidChange),
+            name: UIDevice.orientationDidChangeNotification,
+            object: nil
+        )
+        if let initialOrientation = AVCaptureVideoOrientation(deviceOrientation: UIDevice.current.orientation) {
+            sessionQueue.async { [weak self] in
+                self?.setVideoOrientation(initialOrientation)
+            }
+        }
+    }
+
+    @objc func deviceOrientationDidChange() {
+        let deviceOrientation = UIDevice.current.orientation
+        guard let orientation = AVCaptureVideoOrientation(deviceOrientation: deviceOrientation) else { return }
+        sessionQueue.async { [weak self] in
+            self?.setVideoOrientation(orientation)
+        }
+    }
+
+    func setVideoOrientation(_ orientation: AVCaptureVideoOrientation) {
+        currentVideoOrientation = orientation
+        if let connection = movieOutput.connection(with: .video), connection.isVideoOrientationSupported {
+            connection.videoOrientation = orientation
         }
     }
 }

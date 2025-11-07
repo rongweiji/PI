@@ -24,8 +24,9 @@ final class CameraPreviewView: UIView {
         previewLayer.frame = bounds
         guard let connection = previewLayer.connection else { return }
 
-        if #unavailable(iOS 17.0), connection.isVideoOrientationSupported {
-            connection.videoOrientation = .portrait
+        if connection.isVideoOrientationSupported,
+           let orientation = AVCaptureVideoOrientation(deviceOrientation: UIDevice.current.orientation) {
+            connection.videoOrientation = orientation
         }
     }
 }

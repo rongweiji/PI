@@ -29,6 +29,12 @@ struct ContentView: View {
                     ModeButton(icon: "video.fill", title: "Video Capture", subtitle: "Record video and continuous IMU data")
                 }
 
+                NavigationLink {
+                    IMUOnlyCaptureView()
+                } label: {
+                    ModeButton(icon: "waveform.path.ecg", title: "IMU Only", subtitle: "Capture standalone IMU sessions and export CSV")
+                }
+
                 Spacer()
             }
             .padding()
