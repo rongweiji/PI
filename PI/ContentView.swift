@@ -35,6 +35,18 @@ struct ContentView: View {
                     ModeButton(icon: "waveform.path.ecg", title: "IMU Only", subtitle: "Capture standalone IMU sessions and export CSV")
                 }
 
+                NavigationLink {
+                    MotionPathView()
+                } label: {
+                    ModeButton(icon: "figure.walk.circle", title: "Motion Visualizer", subtitle: "Realtime accelerometer path and distance")
+                }
+
+                NavigationLink {
+                    ARMotionPathView()
+                } label: {
+                    ModeButton(icon: "arkit", title: "AR Motion Visualizer", subtitle: "Use ARKit for higher precision tracking")
+                }
+
                 Spacer()
             }
             .padding()
