@@ -55,7 +55,7 @@ struct VideoCaptureView: View {
             imuManager.stopUpdates()
             videoManager.stopSession()
         }
-        .onChange(of: selectedSamplingRate) { _ in
+        .onChange(of: selectedSamplingRate) {
             applySelectedSamplingRate()
         }
         .onReceive(videoManager.$latestRecording.compactMap { $0 }) { result in
@@ -112,18 +112,32 @@ struct VideoCaptureView: View {
                 Text("Accelerometer:")
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                Text("X: \(imuManager.imuData.accelerometerX, specifier: "%.6f") m/s²")
-                Text("Y: \(imuManager.imuData.accelerometerY, specifier: "%.6f") m/s²")
-                Text("Z: \(imuManager.imuData.accelerometerZ, specifier: "%.6f") m/s²")
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("X: \(imuManager.imuData.accelerometerX, specifier: "%.6f") m/s²")
+                        .font(.footnote)
+                    Spacer()
+                    Text("Y: \(imuManager.imuData.accelerometerY, specifier: "%.6f") m/s²")
+                        .font(.footnote)
+                    Spacer()
+                    Text("Z: \(imuManager.imuData.accelerometerZ, specifier: "%.6f") m/s²")
+                        .font(.footnote)
+                }
             }
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Gyroscope:")
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                Text("X: \(imuManager.imuData.gyroscopeX, specifier: "%.6f") rad/s")
-                Text("Y: \(imuManager.imuData.gyroscopeY, specifier: "%.6f") rad/s")
-                Text("Z: \(imuManager.imuData.gyroscopeZ, specifier: "%.6f") rad/s")
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("X: \(imuManager.imuData.gyroscopeX, specifier: "%.6f") rad/s")
+                        .font(.footnote)
+                    Spacer()
+                    Text("Y: \(imuManager.imuData.gyroscopeY, specifier: "%.6f") rad/s")
+                        .font(.footnote)
+                    Spacer()
+                    Text("Z: \(imuManager.imuData.gyroscopeZ, specifier: "%.6f") rad/s")
+                        .font(.footnote)
+                }
             }
         }
         .padding(.horizontal)
@@ -281,7 +295,7 @@ struct VideoSavedItemsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
                             .font(.headline)
-                        Text("Duration: \(item.duration, format: .number.precision(.fractionLength(1))) s • Samples: \(item.sampleCount)")
+                        Text("Duration: \(item.duration, format: .number.precision(.fractionLength(1))) s • IMU: \(item.sampleCount)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -328,7 +342,10 @@ struct VideoSavedItemsView: View {
     private func deleteItems(offsets: IndexSet) {
         for index in offsets {
             let item = items[index]
-            VideoStorage.deleteRecording(videoFilename: item.videoFilename, imuFilename: item.imuCSVFilename)
+            VideoStorage.deleteRecording(
+                videoFilename: item.videoFilename,
+                imuFilename: item.imuCSVFilename
+            )
             modelContext.delete(item)
         }
     }

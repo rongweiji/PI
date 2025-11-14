@@ -56,7 +56,7 @@ struct IMUOnlyCaptureView: View {
                 isRecording = false
             }
         }
-        .onChange(of: selectedSamplingRate) { _ in
+        .onChange(of: selectedSamplingRate) {
             applySelectedSamplingRate()
         }
     }

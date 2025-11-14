@@ -46,6 +46,7 @@ struct VideoItemExportService {
 
             try fileManager.copyItem(at: videoSource, to: videoTarget)
             try fileManager.copyItem(at: imuSource, to: imuTarget)
+
         }
 
         return exportFolder

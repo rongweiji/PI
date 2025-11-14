@@ -55,12 +55,10 @@ enum IMUSessionStorage {
     }
 
     private static func makeCSV(from samples: [IMUSample]) -> String {
-        var lines = ["timestamp,accelX,accelY,accelZ,gyroX,gyroY,gyroZ"]
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        var lines = ["timestamp_ref,accelX,accelY,accelZ,gyroX,gyroY,gyroZ"]
         for sample in samples {
             let line = [
-                formatter.string(from: sample.timestamp),
+                String(format: "%.9f", sample.timestamp.timeIntervalSinceReferenceDate),
                 String(format: "%.6f", sample.accelerationX),
                 String(format: "%.6f", sample.accelerationY),
                 String(format: "%.6f", sample.accelerationZ),

@@ -11,45 +11,47 @@ import SwiftData
 struct ContentView: View {
     var body: some View {
         NavigationStack {
-            VStack(spacing: 32) {
-                Text("Select a capture mode")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .padding(.top, 40)
+            ScrollView {
+                VStack(spacing: 32) {
+                    Text("Select a capture mode")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 24)
 
-                NavigationLink {
-                    PhotoCaptureView()
-                } label: {
-                    ModeButton(icon: "camera.fill", title: "Photo Capture", subtitle: "Capture still images with IMU snapshots")
+                    NavigationLink {
+                        PhotoCaptureView()
+                    } label: {
+                        ModeButton(icon: "camera.fill", title: "Photo Capture", subtitle: "Capture still images with IMU snapshots")
+                    }
+
+                    NavigationLink {
+                        VideoCaptureView()
+                    } label: {
+                        ModeButton(icon: "video.fill", title: "Video Capture", subtitle: "Record video and continuous IMU data")
+                    }
+
+                    NavigationLink {
+                        IMUOnlyCaptureView()
+                    } label: {
+                        ModeButton(icon: "waveform.path.ecg", title: "IMU Only", subtitle: "Capture standalone IMU sessions and export CSV")
+                    }
+
+                    NavigationLink {
+                        MotionPathView()
+                    } label: {
+                        ModeButton(icon: "figure.walk.circle", title: "Motion Visualizer", subtitle: "Realtime accelerometer path and distance")
+                    }
+
+                    NavigationLink {
+                        ARMotionPathView()
+                    } label: {
+                        ModeButton(icon: "arkit", title: "AR Motion Visualizer", subtitle: "Use ARKit for higher precision tracking")
+                    }
                 }
-
-                NavigationLink {
-                    VideoCaptureView()
-                } label: {
-                    ModeButton(icon: "video.fill", title: "Video Capture", subtitle: "Record video and continuous IMU data")
-                }
-
-                NavigationLink {
-                    IMUOnlyCaptureView()
-                } label: {
-                    ModeButton(icon: "waveform.path.ecg", title: "IMU Only", subtitle: "Capture standalone IMU sessions and export CSV")
-                }
-
-                NavigationLink {
-                    MotionPathView()
-                } label: {
-                    ModeButton(icon: "figure.walk.circle", title: "Motion Visualizer", subtitle: "Realtime accelerometer path and distance")
-                }
-
-                NavigationLink {
-                    ARMotionPathView()
-                } label: {
-                    ModeButton(icon: "arkit", title: "AR Motion Visualizer", subtitle: "Use ARKit for higher precision tracking")
-                }
-
-                Spacer()
+                .padding(.horizontal)
+                .padding(.bottom, 32)
             }
-            .padding()
             .navigationTitle("PI Capture")
         }
     }

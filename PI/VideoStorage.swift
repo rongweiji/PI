@@ -47,7 +47,7 @@ enum VideoStorage {
 
         try FileManager.default.moveItem(at: tempVideoURL, to: targetVideoURL)
 
-        let csv = makeCSV(from: samples)
+        let csv = makeIMUCSV(from: samples)
         try csv.write(to: targetIMUURL, atomically: true, encoding: .utf8)
 
         return (videoFilename, imuFilename)
@@ -62,13 +62,11 @@ enum VideoStorage {
         }
     }
 
-    private static func makeCSV(from samples: [IMUSample]) -> String {
-        var lines = ["timestamp,accelX,accelY,accelZ,gyroX,gyroY,gyroZ"]
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    private static func makeIMUCSV(from samples: [IMUSample]) -> String {
+        var lines = ["timestamp_ref,accelX,accelY,accelZ,gyroX,gyroY,gyroZ"]
         for sample in samples {
             let line = [
-                formatter.string(from: sample.timestamp),
+                String(format: "%.9f", sample.timestamp.timeIntervalSinceReferenceDate),
                 String(format: "%.6f", sample.accelerationX),
                 String(format: "%.6f", sample.accelerationY),
                 String(format: "%.6f", sample.accelerationZ),

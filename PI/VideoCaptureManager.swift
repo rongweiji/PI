@@ -176,6 +176,7 @@ final class VideoCaptureManager: NSObject, ObservableObject {
         currentIMUInterval = interval
         imuRecorder.setUpdateInterval(interval)
     }
+
 }
 
 extension VideoCaptureManager: AVCaptureFileOutputRecordingDelegate {
