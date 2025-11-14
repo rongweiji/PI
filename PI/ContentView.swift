@@ -48,6 +48,12 @@ struct ContentView: View {
                     } label: {
                         ModeButton(icon: "arkit", title: "AR Motion Visualizer", subtitle: "Use ARKit for higher precision tracking")
                     }
+
+                    NavigationLink {
+                        CameraIntrinsicsView()
+                    } label: {
+                        ModeButton(icon: "camera.aperture", title: "Camera Intrinsics", subtitle: "Inspect the current camera intrinsic matrix")
+                    }
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 32)
