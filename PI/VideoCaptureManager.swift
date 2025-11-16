@@ -33,6 +33,7 @@ final class VideoCaptureManager: NSObject, ObservableObject {
     private var recordingStartDate: Date?
     private var currentVideoOrientation: AVCaptureVideoOrientation = .portrait
     private var currentIMUInterval: TimeInterval = 1.0 / 30.0
+    private var activeCameraDevice: AVCaptureDevice?
 
     override init() {
         super.init()
@@ -86,6 +87,7 @@ final class VideoCaptureManager: NSObject, ObservableObject {
                 }
 
                 let input = try AVCaptureDeviceInput(device: device)
+                self.activeCameraDevice = device
 
                 if session.canAddInput(input) {
                     session.addInput(input)
@@ -115,6 +117,8 @@ final class VideoCaptureManager: NSObject, ObservableObject {
             if !session.isRunning {
                 session.startRunning()
             }
+
+            self.applyFixedExposureIfPossible()
 
             DispatchQueue.main.async {
                 self.isSessionRunning = self.session.isRunning
@@ -175,6 +179,26 @@ final class VideoCaptureManager: NSObject, ObservableObject {
         guard !isRecording, interval != currentIMUInterval else { return }
         currentIMUInterval = interval
         imuRecorder.setUpdateInterval(interval)
+    }
+
+    private func applyFixedExposureIfPossible() {
+        guard let device = activeCameraDevice else { return }
+        let targetSeconds = 0.01
+        sessionQueue.async {
+            do {
+                try device.lockForConfiguration()
+                let minSeconds = CMTimeGetSeconds(device.activeFormat.minExposureDuration)
+                let maxSeconds = CMTimeGetSeconds(device.activeFormat.maxExposureDuration)
+                let clamped = max(minSeconds, min(maxSeconds, targetSeconds))
+                let duration = CMTimeMakeWithSeconds(clamped, preferredTimescale: 1_000_000_000)
+                device.setExposureModeCustom(duration: duration, iso: device.iso) { _ in }
+                device.unlockForConfiguration()
+            } catch {
+                DispatchQueue.main.async {
+                    self.cameraError = "Failed to set exposure: \(error.localizedDescription)"
+                }
+            }
+        }
     }
 
 }

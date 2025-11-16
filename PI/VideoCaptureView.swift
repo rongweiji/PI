@@ -276,6 +276,7 @@ struct VideoCaptureView: View {
     private func applySelectedSamplingRate() {
         videoManager.updateIMUSamplingInterval(selectedSamplingRate.interval)
     }
+
 }
 
 struct VideoSavedItemsView: View {

@@ -54,6 +54,12 @@ struct ContentView: View {
                     } label: {
                         ModeButton(icon: "camera.aperture", title: "Camera Intrinsics", subtitle: "Inspect the current camera intrinsic matrix")
                     }
+
+                    NavigationLink {
+                        VideoARCaptureView()
+                    } label: {
+                        ModeButton(icon: "video.and.waveform", title: "Video + AR + IMU", subtitle: "Record video with ARKit odometry and IMU")
+                    }
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 32)
