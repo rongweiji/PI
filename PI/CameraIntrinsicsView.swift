@@ -16,6 +16,7 @@ struct CameraIntrinsicsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                resolutionPicker
                 previewSection
                 calibrationInfoSection
                 helperSection
@@ -23,9 +24,29 @@ struct CameraIntrinsicsView: View {
             .padding(.vertical, 24)
         }
         .navigationTitle("Camera Intrinsics")
+        .onChange(of: manager.selectedResolution) { newValue in
+            manager.updateResolution(to: newValue)
+        }
         .onDisappear {
             manager.stopSession()
         }
+    }
+
+    private var resolutionPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Calibration Resolution")
+                .font(.headline)
+            Picker("Resolution", selection: $manager.selectedResolution) {
+                ForEach(CameraCalibrationResolution.allCases) { option in
+                    Text(option.label).tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+            Text("Default: 1920×1440. Switch to 640×480 if you need a lower-resolution intrinsic matrix.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal)
     }
 
     private var previewSection: some View {
@@ -76,6 +97,10 @@ struct CameraIntrinsicsView: View {
                     Text("Frame Dimensions: \(Int(dimensions.width)) × \(Int(dimensions.height)) px")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                } else {
+                    Text("Frame Dimensions: n/a")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
 
                 if let timestamp = manager.lastUpdate {
@@ -106,6 +131,31 @@ struct CameraIntrinsicsView: View {
     }
 }
 
+enum CameraCalibrationResolution: String, CaseIterable, Identifiable {
+    case px1920x1440
+    case px640x480
+
+    var id: String { rawValue }
+
+    var preset: AVCaptureSession.Preset {
+        switch self {
+        case .px1920x1440:
+            return .photo
+        case .px640x480:
+            return .vga640x480
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .px1920x1440:
+            return "1920×1440"
+        case .px640x480:
+            return "640×480"
+        }
+    }
+}
+
 final class CameraIntrinsicsManager: NSObject, ObservableObject {
     @Published var session = AVCaptureSession()
     @Published var cameraError: String?
@@ -114,6 +164,7 @@ final class CameraIntrinsicsManager: NSObject, ObservableObject {
     @Published var lastUpdate: Date?
     @Published var isAuthorized = false
     @Published var isSessionRunning = false
+    @Published var selectedResolution: CameraCalibrationResolution = .px1920x1440
 
     private let sessionQueue = DispatchQueue(label: "CameraIntrinsicsSessionQueue")
     private let videoOutputQueue = DispatchQueue(label: "CameraIntrinsicsVideoOutputQueue")
@@ -156,7 +207,7 @@ final class CameraIntrinsicsManager: NSObject, ObservableObject {
             }
 
             session.beginConfiguration()
-            session.sessionPreset = .high
+            session.sessionPreset = selectedResolution.preset
 
             do {
                 guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
@@ -207,6 +258,23 @@ final class CameraIntrinsicsManager: NSObject, ObservableObject {
             DispatchQueue.main.async {
                 self.isSessionRunning = self.session.isRunning
             }
+        }
+    }
+
+    func updateResolution(to resolution: CameraCalibrationResolution) {
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+
+            session.beginConfiguration()
+            if session.canSetSessionPreset(resolution.preset) {
+                session.sessionPreset = resolution.preset
+            } else {
+                DispatchQueue.main.async {
+                    self.cameraError = "Resolution \(resolution.label) is not supported on this device."
+                }
+            }
+            session.commitConfiguration()
+            self.configureIntrinsicDelivery()
         }
     }
 
