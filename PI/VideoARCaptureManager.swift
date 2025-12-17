@@ -6,18 +6,35 @@
 //
 
 import Foundation
+import CoreGraphics
 import ARKit
 import AVFoundation
 import Combine
 import simd
 
-@MainActor
+struct ARVideoFormatOption: Identifiable, Equatable, Hashable {
+    let id = UUID()
+    let format: ARConfiguration.VideoFormat
+    let resolution: CGSize
+    let fps: Int
+
+    var label: String {
+        "\(Int(resolution.width))×\(Int(resolution.height)) @ \(fps)fps"
+    }
+
+    static func == (lhs: ARVideoFormatOption, rhs: ARVideoFormatOption) -> Bool {
+        lhs.resolution == rhs.resolution && lhs.fps == rhs.fps
+    }
+}
+
 final class VideoARCaptureManager: NSObject, ObservableObject {
     @Published var session = ARSession()
     @Published var isRecording = false
     @Published var captureError: String?
     @Published var latestRecording: VideoARCaptureResult?
     @Published var isSessionRunning = false
+    @Published var availableFormats: [ARVideoFormatOption] = []
+    @Published var selectedFormat: ARVideoFormatOption?
 
     private let imuRecorder = IMUStreamRecorder()
     private let videoRecorder = ARVideoRecorder()
@@ -29,23 +46,45 @@ final class VideoARCaptureManager: NSObject, ObservableObject {
     private var videoTempURL: URL?
     private var videoWriterStarted = false
     private let arSamplingQueue = DispatchQueue(label: "VideoAROdometryQueue")
+    private let arDelegateQueue = DispatchQueue(label: "VideoARSessionDelegateQueue")
 
     override init() {
         super.init()
         session.delegate = self
+        session.delegateQueue = arDelegateQueue
         imuRecorder.setUpdateInterval(0.01)
+        refreshAvailableFormats()
     }
 
-    func startSession() {
+    func refreshAvailableFormats() {
         guard ARWorldTrackingConfiguration.isSupported else {
             captureError = "ARKit world tracking is not supported on this device."
+            availableFormats = []
             return
         }
-        let configuration = ARWorldTrackingConfiguration()
-        configuration.worldAlignment = .gravity
-        if let format = configuration.videoFormat(forFPS: 30) {
-            configuration.videoFormat = format
+        let formats = ARWorldTrackingConfiguration.supportedVideoFormats.map { format in
+            ARVideoFormatOption(format: format, resolution: format.imageResolution, fps: format.framesPerSecond)
         }
+        let sorted = formats.sorted { lhs, rhs in
+            if lhs.resolution.width == rhs.resolution.width {
+                return lhs.fps > rhs.fps
+            }
+            return lhs.resolution.width > rhs.resolution.width
+        }
+        availableFormats = sorted
+        if selectedFormat == nil {
+            selectedFormat = sorted.first
+        }
+    }
+
+    func startSession(using formatOption: ARVideoFormatOption? = nil) {
+        let option = formatOption ?? selectedFormat ?? availableFormats.first
+        guard let chosen = option else {
+            captureError = "No AR video formats are available on this device."
+            return
+        }
+        selectedFormat = chosen
+        guard let configuration = makeConfiguration(for: chosen) else { return }
         applyFixedExposure()
         session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         isSessionRunning = true
@@ -151,29 +190,53 @@ final class VideoARCaptureManager: NSObject, ObservableObject {
             captureError = "Failed to start video recording: \(error.localizedDescription)"
         }
     }
+
+    func updateResolution(to option: ARVideoFormatOption) {
+        guard !isRecording else {
+            captureError = "Stop recording to change resolution."
+            return
+        }
+        selectedFormat = option
+        guard let configuration = makeConfiguration(for: option) else { return }
+        applyFixedExposure()
+        session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
+        isSessionRunning = true
+    }
+
+    private func makeConfiguration(for option: ARVideoFormatOption) -> ARWorldTrackingConfiguration? {
+        guard ARWorldTrackingConfiguration.isSupported else {
+            captureError = "ARKit world tracking is not supported on this device."
+            return nil
+        }
+        let configuration = ARWorldTrackingConfiguration()
+        configuration.worldAlignment = .gravity
+        configuration.videoFormat = option.format
+        return configuration
+    }
 }
 
 extension VideoARCaptureManager: ARSessionDelegate {
     nonisolated func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        Task { @MainActor in
-            self.latestTransform = frame.camera.transform
-            guard self.isRecording else { return }
-            self.startVideoWriterIfNeeded(pixelBuffer: frame.capturedImage)
-            self.videoRecorder.appendFrame(frame.capturedImage, timestamp: frame.timestamp)
+        autoreleasepool {
+            let transform = frame.camera.transform
+            let pixelBuffer = frame.capturedImage
+            let timestamp = frame.timestamp
+
+            DispatchQueue.main.async { [weak self] in
+                self?.latestTransform = transform
+            }
+
+            arSamplingQueue.async { [weak self] in
+                guard let self, self.isRecording else { return }
+                self.startVideoWriterIfNeeded(pixelBuffer: pixelBuffer)
+                self.videoRecorder.appendFrame(pixelBuffer, timestamp: timestamp)
+            }
         }
     }
 
     nonisolated func session(_ session: ARSession, didFailWithError error: Error) {
         Task { @MainActor in
             self.captureError = error.localizedDescription
-        }
-    }
-}
-
-private extension ARWorldTrackingConfiguration {
-    func videoFormat(forFPS fps: Int) -> ARConfiguration.VideoFormat? {
-        return type(of: self).supportedVideoFormats.first { format in
-            format.framesPerSecond == fps
         }
     }
 }

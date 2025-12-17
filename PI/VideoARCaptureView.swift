@@ -19,11 +19,14 @@ struct VideoARCaptureView: View {
     @StateObject private var captureManager = VideoARCaptureManager()
     @State private var statusMessage: String?
     @State private var statusIsError = false
+    @State private var showResolutionSheet = true
+    @State private var pendingFormatSelection: ARVideoFormatOption?
 
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
                 arPreview
+                resolutionInfo
                 parametersSection
                 recordingControls
                 statusLabel
@@ -33,7 +36,14 @@ struct VideoARCaptureView: View {
         }
         .navigationTitle("Video + AR + IMU")
         .onAppear {
-            captureManager.startSession()
+            captureManager.refreshAvailableFormats()
+            pendingFormatSelection = captureManager.selectedFormat
+            showResolutionSheet = true
+        }
+        .onChange(of: captureManager.availableFormats) { newValue in
+            if pendingFormatSelection == nil {
+                pendingFormatSelection = newValue.first
+            }
         }
         .onDisappear {
             captureManager.stopSession()
@@ -43,6 +53,23 @@ struct VideoARCaptureView: View {
         }
         .onReceive(captureManager.$captureError.compactMap { $0 }) { message in
             showStatus(message: message, isError: true)
+        }
+        .sheet(isPresented: $showResolutionSheet, onDismiss: {
+            guard captureManager.isSessionRunning else { return }
+        }) {
+            ResolutionSheetContent(
+                available: captureManager.availableFormats,
+                selection: $pendingFormatSelection,
+                onConfirm: {
+                    let chosen = pendingFormatSelection ?? captureManager.availableFormats.first
+                    captureManager.startSession(using: chosen)
+                    showResolutionSheet = false
+                },
+                onCancel: {
+                    showResolutionSheet = false
+                }
+            )
+            .presentationDetents([.fraction(0.4), .medium])
         }
     }
 
@@ -74,10 +101,22 @@ struct VideoARCaptureView: View {
         }
     }
 
+    private var resolutionInfo: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Video Resolution")
+                .font(.headline)
+            Text(captureManager.selectedFormat?.label ?? "Not set")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal)
+    }
+
     private var parametersSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Capture Parameters")
                 .font(.headline)
+            parameterRow(label: "Video Resolution", value: captureManager.selectedFormat?.label ?? "Not set")
             parameterRow(label: "Video Frame Rate", value: "30 FPS")
             parameterRow(label: "Exposure", value: "0.01 s (fixed)")
             parameterRow(label: "IMU Sampling", value: "100 Hz")
@@ -212,6 +251,42 @@ private struct ARPreviewView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: ARView, context: Context) {}
+}
+
+private struct ResolutionSheetContent: View {
+    let available: [ARVideoFormatOption]
+    @Binding var selection: ARVideoFormatOption?
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List(available) { option in
+                HStack {
+                    Text(option.label)
+                    Spacer()
+                    if selection == option {
+                        Image(systemName: "checkmark")
+                            .foregroundColor(.blue)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    selection = option
+                }
+            }
+            .navigationTitle("Select Resolution")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Continue", action: onConfirm)
+                        .disabled(selection == nil)
+                }
+            }
+        }
+    }
 }
 
 struct VideoARSavedItemsView: View {

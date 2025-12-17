@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-
 @main
 struct PIApp: App {
     var sharedModelContainer: ModelContainer = {
@@ -15,7 +14,8 @@ struct PIApp: App {
             PhotoItem.self,
             VideoItem.self,
             IMUSessionItem.self,
-            VideoARItem.self
+            VideoARItem.self,
+            VideoOnlyItem.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

@@ -32,6 +32,12 @@ struct ContentView: View {
                     }
 
                     NavigationLink {
+                        VideoOnlyCaptureView()
+                    } label: {
+                        ModeButton(icon: "video", title: "Video Only", subtitle: "Pure video with selectable resolution")
+                    }
+
+                    NavigationLink {
                         IMUOnlyCaptureView()
                     } label: {
                         ModeButton(icon: "waveform.path.ecg", title: "IMU Only", subtitle: "Capture standalone IMU sessions and export CSV")
