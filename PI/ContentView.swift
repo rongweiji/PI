@@ -64,7 +64,7 @@ struct ContentView: View {
                     NavigationLink {
                         VideoARCaptureView()
                     } label: {
-                        ModeButton(icon: "video.and.waveform", title: "Video + AR + IMU", subtitle: "Record video with ARKit odometry and IMU")
+                        ModeButton(icon: "video.and.waveform", title: "Frames + AR Pose", subtitle: "Save ARKit frames, timestamps, and 6DoF pose")
                     }
                 }
                 .padding(.horizontal)

@@ -8,8 +8,9 @@
 import Foundation
 
 struct VideoARCaptureResult {
-    let videoURL: URL
-    let imuSamples: [IMUSample]
-    let arSamples: [ARPoseSample]
+    let framesZipURL: URL
+    let timestampsURL: URL
+    let poseCSVURL: URL
     let duration: TimeInterval
+    let frameCount: Int
 }

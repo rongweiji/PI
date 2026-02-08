@@ -12,28 +12,25 @@ import SwiftData
 final class VideoARItem {
     var id: UUID
     var timestamp: Date
-    var videoFilename: String
-    var imuCSVFilename: String
-    var arCSVFilename: String
+    var framesZipFilename: String = ""
+    var timestampsFilename: String = ""
+    var poseCSVFilename: String = ""
     var duration: TimeInterval
-    var imuSampleCount: Int
-    var arSampleCount: Int
+    var frameCount: Int = 0
 
     init(id: UUID = UUID(),
          timestamp: Date,
-         videoFilename: String,
-         imuCSVFilename: String,
-         arCSVFilename: String,
+         framesZipFilename: String,
+         timestampsFilename: String,
+         poseCSVFilename: String,
          duration: TimeInterval,
-         imuSampleCount: Int,
-         arSampleCount: Int) {
+         frameCount: Int) {
         self.id = id
         self.timestamp = timestamp
-        self.videoFilename = videoFilename
-        self.imuCSVFilename = imuCSVFilename
-        self.arCSVFilename = arCSVFilename
+        self.framesZipFilename = framesZipFilename
+        self.timestampsFilename = timestampsFilename
+        self.poseCSVFilename = poseCSVFilename
         self.duration = duration
-        self.imuSampleCount = imuSampleCount
-        self.arSampleCount = arSampleCount
+        self.frameCount = frameCount
     }
 }

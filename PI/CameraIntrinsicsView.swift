@@ -42,7 +42,7 @@ struct CameraIntrinsicsView: View {
                 }
             }
             .pickerStyle(.segmented)
-            Text("Default: 1920×1440. Switch to 640×480 if you need a lower-resolution intrinsic matrix.")
+            Text("Default: 1920×1440. You can also use 1920×1080 or switch to 640×480 for a lower-resolution intrinsic matrix.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -133,6 +133,7 @@ struct CameraIntrinsicsView: View {
 
 enum CameraCalibrationResolution: String, CaseIterable, Identifiable {
     case px1920x1440
+    case px1920x1080
     case px640x480
 
     var id: String { rawValue }
@@ -141,6 +142,8 @@ enum CameraCalibrationResolution: String, CaseIterable, Identifiable {
         switch self {
         case .px1920x1440:
             return .photo
+        case .px1920x1080:
+            return .hd1920x1080
         case .px640x480:
             return .vga640x480
         }
@@ -150,6 +153,8 @@ enum CameraCalibrationResolution: String, CaseIterable, Identifiable {
         switch self {
         case .px1920x1440:
             return "1920×1440"
+        case .px1920x1080:
+            return "1920×1080"
         case .px640x480:
             return "640×480"
         }

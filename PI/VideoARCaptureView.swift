@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import AVKit
 import Combine
 
 #if canImport(ARKit)
@@ -34,7 +33,7 @@ struct VideoARCaptureView: View {
             }
             .padding(.vertical, 24)
         }
-        .navigationTitle("Video + AR + IMU")
+        .navigationTitle("AR Frames + Pose")
         .onAppear {
             captureManager.refreshAvailableFormats()
             pendingFormatSelection = captureManager.selectedFormat
@@ -103,7 +102,7 @@ struct VideoARCaptureView: View {
 
     private var resolutionInfo: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Video Resolution")
+            Text("Frame Resolution")
                 .font(.headline)
             Text(captureManager.selectedFormat?.label ?? "Not set")
                 .font(.subheadline)
@@ -116,11 +115,10 @@ struct VideoARCaptureView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Capture Parameters")
                 .font(.headline)
-            parameterRow(label: "Video Resolution", value: captureManager.selectedFormat?.label ?? "Not set")
-            parameterRow(label: "Video Frame Rate", value: "30 FPS")
+            parameterRow(label: "Frame Resolution", value: captureManager.selectedFormat?.label ?? "Not set")
+            parameterRow(label: "Frame Capture", value: "Every ARKit frame")
             parameterRow(label: "Exposure", value: "0.01 s (fixed)")
-            parameterRow(label: "IMU Sampling", value: "100 Hz")
-            parameterRow(label: "AR Odometry", value: "100 Hz")
+            parameterRow(label: "Pose Output", value: "Camera-to-world (quaternion)")
         }
         .padding(.horizontal)
     }
@@ -185,7 +183,7 @@ struct VideoARCaptureView: View {
         } label: {
             HStack {
                 Image(systemName: "film.stack")
-                Text("View Recorded Sessions")
+                Text("View Captured Sessions")
             }
             .font(.headline)
             .foregroundColor(.blue)
@@ -217,25 +215,26 @@ struct VideoARCaptureView: View {
         do {
             let timestamp = Date()
             let result = try VideoARStorage.saveRecording(
-                tempVideoURL: recording.videoURL,
-                imuSamples: recording.imuSamples,
-                arSamples: recording.arSamples,
-                timestamp: timestamp
+                framesZipURL: recording.framesZipURL,
+                timestampsURL: recording.timestampsURL,
+                poseCSVURL: recording.poseCSVURL,
+                timestamp: timestamp,
+                duration: recording.duration,
+                frameCount: recording.frameCount
             )
 
             let item = VideoARItem(
                 timestamp: timestamp,
-                videoFilename: result.videoFilename,
-                imuCSVFilename: result.imuFilename,
-                arCSVFilename: result.arFilename,
-                duration: recording.duration,
-                imuSampleCount: result.imuCount,
-                arSampleCount: result.arCount
+                framesZipFilename: result.framesZipFilename,
+                timestampsFilename: result.timestampsFilename,
+                poseCSVFilename: result.poseFilename,
+                duration: result.duration,
+                frameCount: result.frameCount
             )
             modelContext.insert(item)
-            showStatus(message: "Recording saved.", isError: false)
+            showStatus(message: "Capture saved.", isError: false)
         } catch {
-            showStatus(message: "Failed to save recording: \(error.localizedDescription)", isError: true)
+            showStatus(message: "Failed to save capture: \(error.localizedDescription)", isError: true)
         }
     }
 }
@@ -306,7 +305,7 @@ struct VideoARSavedItemsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
                             .font(.headline)
-                        Text("Duration: \(item.duration, format: .number.precision(.fractionLength(1))) s • IMU: \(item.imuSampleCount) • AR: \(item.arSampleCount)")
+                        Text("Duration: \(item.duration, format: .number.precision(.fractionLength(1))) s • Frames: \(item.frameCount)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -315,7 +314,7 @@ struct VideoARSavedItemsView: View {
             }
             .onDelete(perform: deleteItems)
         }
-        .navigationTitle("AR Recordings")
+        .navigationTitle("AR Captures")
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) { EditButton() }
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -352,9 +351,9 @@ struct VideoARSavedItemsView: View {
         for index in offsets {
             let item = items[index]
             VideoARStorage.deleteRecording(
-                videoFilename: item.videoFilename,
-                imuFilename: item.imuCSVFilename,
-                arFilename: item.arCSVFilename
+                framesZipFilename: item.framesZipFilename,
+                timestampsFilename: item.timestampsFilename,
+                poseFilename: item.poseCSVFilename
             )
             modelContext.delete(item)
         }
@@ -396,20 +395,6 @@ struct VideoARItemDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                if let player = makePlayer() {
-                    VideoPlayer(player: player)
-                        .frame(height: 240)
-                        .cornerRadius(12)
-                        .onDisappear {
-                            player.pause()
-                        }
-                } else {
-                    Text("Video file not available.")
-                        .font(.callout)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
-
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Timestamp")
                         .font(.headline)
@@ -420,27 +405,21 @@ struct VideoARItemDetailView: View {
                     Text("Details")
                         .font(.headline)
                     Text("Duration: \(item.duration, format: .number.precision(.fractionLength(1))) s")
-                    Text("IMU Samples: \(item.imuSampleCount)")
-                    Text("AR Samples: \(item.arSampleCount)")
+                    Text("Frames: \(item.frameCount)")
 
                     Divider()
 
                     Text("Files")
                         .font(.headline)
-                    Text("Video: \(item.videoFilename)")
-                    Text("IMU CSV: \(item.imuCSVFilename)")
-                    Text("AR CSV: \(item.arCSVFilename)")
+                    Text("Frames ZIP: \(item.framesZipFilename)")
+                    Text("Timestamps TXT: \(item.timestampsFilename)")
+                    Text("Pose CSV: \(item.poseCSVFilename)")
                 }
                 .padding()
             }
             .padding()
         }
-        .navigationTitle("AR Recording Details")
-    }
-
-    private func makePlayer() -> AVPlayer? {
-        guard let url = try? VideoARStorage.urlForVideo(filename: item.videoFilename) else { return nil }
-        return AVPlayer(url: url)
+        .navigationTitle("AR Capture Details")
     }
 }
 
